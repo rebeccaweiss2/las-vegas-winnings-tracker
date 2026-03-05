@@ -891,11 +891,42 @@ function shareData() {
       if (err.name !== 'AbortError') showToast('Could not share');
     });
   } else {
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('Summary copied to clipboard! 📋');
-    }).catch(() => {
-      showToast('Could not share or copy');
-    });
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Summary copied to clipboard! 📋');
+      }).catch(() => {
+        showToast('Could not share or copy');
+      });
+    } else {
+      // Fallback for non-secure contexts or when navigator.clipboard is unavailable
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        // Avoid scrolling to bottom
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '1px';
+        textArea.style.height = '1px';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand && document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          showToast('Summary copied to clipboard! 📋');
+        } else {
+          showToast('Copy not supported in this browser');
+        }
+      } catch (e) {
+        showToast('Could not share or copy');
+      }
+    }
   }
 }
 </script>
