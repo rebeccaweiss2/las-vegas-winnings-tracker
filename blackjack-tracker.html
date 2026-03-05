@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vegas Tracker 🎰</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #FFD700;
+    --gold-dim: #b89a00;
+    --green: #00C87C;
+    --red: #FF4757;
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #666;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle at 20% 80%, rgba(0,100,40,0.06) 0%, transparent 60%),
+                      radial-gradient(circle at 80% 20%, rgba(180,120,0,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 430px; margin: 0 auto; }
+
+  header {
+    padding: 20px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--gold), #fff8dc, var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .suits { font-size: 18px; letter-spacing: 4px; opacity: 0.4; }
+
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 16px 20px;
+  }
+
+  .tab {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    border-color: var(--gold-dim);
+    color: var(--gold);
+  }
+
+  .view { display: none; padding: 0 20px 100px; }
+  .view.active { display: block; }
+
+  .player-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .player-row::-webkit-scrollbar { display: none; }
+
+  .player-chip {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .player-chip.active {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+    background: rgba(255,215,0,0.08);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .amount-display {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 64px;
+    text-align: center;
+    letter-spacing: 2px;
+    line-height: 1;
+    padding: 10px 0;
+    transition: color 0.2s;
+  }
+
+  .amount-display.positive { color: var(--green); }
+  .amount-display.negative { color: var(--red); }
+  .amount-display.zero { color: var(--muted); }
+
+  .sign-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .sign-btn {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+
+  .sign-btn.win.active {
+    background: rgba(0,200,124,0.15);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .sign-btn.loss.active {
+    background: rgba(255,71,87,0.15);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .num-btn {
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.1s;
+    text-align: center;
+  }
+
+  .num-btn:active { transform: scale(0.95); background: var(--border); }
+  .num-btn.clear { color: var(--red); font-size: 14px; }
+  .num-btn.back { color: var(--gold); }
+
+  .quick-amounts {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .quick-amounts::-webkit-scrollbar { display: none; }
+
+  .quick-btn {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .quick-btn:active { background: var(--border); color: var(--text); }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: center;
+  }
+
+  .input-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    white-space: nowrap;
+    width: 60px;
+  }
+
+  .text-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .text-input:focus { border-color: var(--gold-dim); }
+
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #c8a200, var(--gold), #c8a200);
+    color: #000;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 22px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+  .session-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .session-left { flex: 1; }
+  .session-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .session-meta {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .session-amount {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 24px;
+    letter-spacing: 1px;
+  }
+
+  .session-amount.pos { color: var(--green); }
+  .session-amount.neg { color: var(--red); }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--border);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-left: 8px;
+    transition: color 0.2s;
+  }
+  .delete-btn:active { color: var(--red); }
+
+  .leaderboard-entry {
+    display: flex;
+    align-items: center;
+    padding: 16px 18px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .leaderboard-entry::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .leaderboard-entry.top::before { background: var(--gold); }
+  .leaderboard-entry.winning::before { background: var(--green); }
+  .leaderboard-entry.losing::before { background: var(--red); }
+
+  .rank {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    color: var(--muted);
+    width: 36px;
+    flex-shrink: 0;
+  }
+
+  .rank.gold { color: var(--gold); }
+
+  .lb-info { flex: 1; }
+
+  .lb-name {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .lb-sessions {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .lb-amount {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 32px;
+    letter-spacing: 1px;
+  }
+
+  .lb-amount.pos { color: var(--green); }
+  .lb-amount.neg { color: var(--red); }
+  .lb-amount.zero { color: var(--muted); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 32px;
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+
+  .add-player-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .add-player-form .text-input { flex: 1; }
+
+  .add-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--gold-dim);
+    background: rgba(255,215,0,0.08);
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .player-manage-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .player-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .remove-player {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">Vegas Tracker</div>
+    <div class="suits">♠ ♥ ♦ ♣</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log')">🎰 Log</button>
+    <button class="tab" onclick="switchTab('history')">📋 History</button>
+    <button class="tab" onclick="switchTab('board')">🏆 Board</button>
+  </div>
+
+  <!-- LOG VIEW -->
+  <div class="view active" id="view-log">
+    <div class="section-title">Playing as</div>
+    <div class="player-row" id="player-row"></div>
+
+    <div class="card">
+      <div class="card-title">Result</div>
+      <div class="sign-toggle">
+        <button class="sign-btn win active" id="btn-win" onclick="setSign('win')">WIN ↑</button>
+        <button class="sign-btn loss" id="btn-loss" onclick="setSign('loss')">LOSS ↓</button>
+      </div>
+
+      <div class="amount-display positive" id="amount-display">$0</div>
+
+      <div class="quick-amounts">
+        <button class="quick-btn" onclick="quickAdd(25)">+$25</button>
+        <button class="quick-btn" onclick="quickAdd(50)">+$50</button>
+        <button class="quick-btn" onclick="quickAdd(100)">+$100</button>
+        <button class="quick-btn" onclick="quickAdd(200)">+$200</button>
+        <button class="quick-btn" onclick="quickAdd(500)">+$500</button>
+      </div>
+
+      <div class="numpad">
+        <button class="num-btn" onclick="numPress('1')">1</button>
+        <button class="num-btn" onclick="numPress('2')">2</button>
+        <button class="num-btn" onclick="numPress('3')">3</button>
+        <button class="num-btn" onclick="numPress('4')">4</button>
+        <button class="num-btn" onclick="numPress('5')">5</button>
+        <button class="num-btn" onclick="numPress('6')">6</button>
+        <button class="num-btn" onclick="numPress('7')">7</button>
+        <button class="num-btn" onclick="numPress('8')">8</button>
+        <button class="num-btn" onclick="numPress('9')">9</button>
+        <button class="num-btn clear" onclick="clearAmount()">CLR</button>
+        <button class="num-btn" onclick="numPress('0')">0</button>
+        <button class="num-btn back" onclick="backspace()">⌫</button>
+      </div>
+
+      <div class="input-row">
+        <span class="input-label">Casino</span>
+        <input class="text-input" id="casino-input" type="text" placeholder="Bellagio, MGM..." autocomplete="off">
+      </div>
+
+      <button class="submit-btn" onclick="logEntry()">LOG SESSION</button>
+    </div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div class="view" id="view-history">
+    <div class="section-title">All Sessions</div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- LEADERBOARD VIEW -->
+  <div class="view" id="view-board">
+    <div class="section-title">Weekend Summary</div>
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Leaderboard</div>
+    <div id="leaderboard-list"></div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Players</div>
+    <div class="add-player-form">
+      <input class="text-input" id="new-player-input" type="text" placeholder="Add friend..." maxlength="20" autocomplete="off">
+      <button class="add-btn" onclick="addPlayer()">＋</button>
+    </div>
+    <div id="player-manage-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'vegas_tracker_v2';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {
+    players: [{ id: 'me', name: 'Me', emoji: '🎰' }],
+    sessions: [],
+    activePlayer: 'me'
+  };
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+let state = loadState();
+let currentSign = 'win';
+let currentAmount = '';
+const EMOJIS = ['🃏','🎲','♠️','♥️','♦️','♣️','🍀','💎','👑','🤑','😎','🔥','⚡','🌟','🎯'];
+
+function fmtAbs(n) { return '$' + Math.abs(Math.round(n)); }
+
+function timeStr(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+         ' · ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function playerById(id) { return state.players.find(p => p.id === id); }
+
+function switchTab(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.tab')[['log','history','board'].indexOf(name)].classList.add('active');
+  if (name === 'history') renderHistory();
+  if (name === 'board') renderBoard();
+  if (name === 'log') renderPlayerRow();
+}
+
+function numPress(d) {
+  if (currentAmount.length >= 6) return;
+  if (currentAmount === '0') currentAmount = d;
+  else currentAmount += d;
+  updateAmountDisplay();
+}
+
+function clearAmount() { currentAmount = ''; updateAmountDisplay(); }
+
+function backspace() {
+  currentAmount = currentAmount.slice(0, -1);
+  updateAmountDisplay();
+}
+
+function quickAdd(n) {
+  const cur = parseInt(currentAmount || '0');
+  currentAmount = String(cur + n);
+  updateAmountDisplay();
+}
+
+function updateAmountDisplay() {
+  const val = parseInt(currentAmount || '0');
+  const el = document.getElementById('amount-display');
+  el.textContent = fmtAbs(val);
+  el.className = 'amount-display ' + (val === 0 ? 'zero' : currentSign === 'win' ? 'positive' : 'negative');
+}
+
+function setSign(s) {
+  currentSign = s;
+  document.getElementById('btn-win').classList.toggle('active', s === 'win');
+  document.getElementById('btn-loss').classList.toggle('active', s === 'loss');
+  updateAmountDisplay();
+}
+
+function logEntry() {
+  const amount = parseInt(currentAmount || '0');
+  if (amount === 0) { showToast('Enter an amount first'); return; }
+  const player = playerById(state.activePlayer);
+  if (!player) { showToast('Select a player first'); return; }
+  const casino = document.getElementById('casino-input').value.trim();
+  const finalAmount = currentSign === 'win' ? amount : -amount;
+  state.sessions.unshift({ id: Date.now(), playerId: state.activePlayer, amount: finalAmount, casino: casino || null, ts: Date.now() });
+  saveState();
+  showToast(currentSign === 'win' ? player.name + ' won ' + fmtAbs(amount) + '! 🎉' : player.name + ' lost ' + fmtAbs(amount) + ' 😬');
+  currentAmount = '';
+  document.getElementById('casino-input').value = '';
+  updateAmountDisplay();
+}
+
+function renderPlayerRow() {
+  const row = document.getElementById('player-row');
+  row.innerHTML = '';
+  state.players.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'player-chip' + (p.id === state.activePlayer ? ' active' : '');
+    btn.textContent = p.emoji + ' ' + p.name;
+    btn.onclick = () => { state.activePlayer = p.id; saveState(); renderPlayerRow(); };
+    row.appendChild(btn);
+  });
+}
+
+function addPlayer() {
+  const input = document.getElementById('new-player-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.players.find(p => p.name.toLowerCase() === name.toLowerCase())) { showToast('Already added!'); return; }
+  const emoji = EMOJIS[state.players.length % EMOJIS.length];
+  state.players.push({ id: 'p_' + Date.now(), name, emoji });
+  saveState();
+  input.value = '';
+  renderBoard();
+  renderPlayerRow();
+  showToast(emoji + ' ' + name + ' added!');
+}
+
+function removePlayer(id) {
+  if (id === 'me') { showToast("Can't remove yourself!"); return; }
+  state.players = state.players.filter(p => p.id !== id);
+  state.sessions = state.sessions.filter(s => s.playerId !== id);
+  if (state.activePlayer === id) state.activePlayer = 'me';
+  saveState();
+  renderBoard();
+  renderPlayerRow();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (state.sessions.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🃏</div>No sessions yet.<br>Log your first hand!</div>';
+    return;
+  }
+  list.innerHTML = '';
+  state.sessions.forEach(s => {
+    const player = playerById(s.playerId);
+    const el = document.createElement('div');
+    el.className = 'session-entry';
+    const sign = s.amount >= 0 ? '+' : '';
+    el.innerHTML = '<div class="session-left"><div class="session-name">' + (player ? player.emoji + ' ' + player.name : '?') + '</div><div class="session-meta">' + (s.casino ? s.casino + ' · ' : '') + timeStr(s.ts) + '</div></div><div class="session-amount ' + (s.amount >= 0 ? 'pos' : 'neg') + '">' + sign + '$' + Math.abs(s.amount) + '</div><button class="delete-btn" onclick="deleteSession(' + s.id + ')">×</button>';
+    list.appendChild(el);
+  });
+}
+
+function deleteSession(id) {
+  state.sessions = state.sessions.filter(s => s.id !== id);
+  saveState();
+  renderHistory();
+  showToast('Deleted');
+}
+
+function renderBoard() {
+  const allAmounts = state.sessions.map(s => s.amount);
+  const totalNet = allAmounts.reduce((a, b) => a + b, 0);
+  const biggestWin = Math.max(0, ...allAmounts.filter(a => a > 0), 0);
+  const biggestLoss = Math.min(0, ...allAmounts.filter(a => a < 0), 0);
+
+  document.getElementById('stats-grid').innerHTML =
+    '<div class="stat-card"><div class="stat-value" style="color:' + (totalNet >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (totalNet >= 0 ? '+' : '') + '$' + Math.abs(Math.round(totalNet)) + '</div><div class="stat-label">Group Net</div></div>' +
+    '<div class="stat-card"><div class="stat-value">' + state.sessions.length + '</div><div class="stat-label">Sessions</div></div>' +
+    '<div class="stat-card"><div class="stat-value" style="color:var(--green)">$' + biggestWin + '</div><div class="stat-label">Best Win</div></div>' +
+    '<div class="stat-card"><div class="stat-value" style="color:var(--red)">$' + Math.abs(biggestLoss) + '</div><div class="stat-label">Worst Loss</div></div>';
+
+  const leaderboard = state.players.map(p => {
+    const sessions = state.sessions.filter(s => s.playerId === p.id);
+    const net = sessions.reduce((a, s) => a + s.amount, 0);
+    const wins = sessions.filter(s => s.amount > 0).length;
+    return { ...p, net, sessions: sessions.length, wins };
+  }).sort((a, b) => b.net - a.net);
+
+  const lb = document.getElementById('leaderboard-list');
+  if (leaderboard.every(p => p.sessions === 0)) {
+    lb.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div>No data yet.<br>Start logging sessions!</div>';
+  } else {
+    lb.innerHTML = '';
+    leaderboard.forEach((p, i) => {
+      const el = document.createElement('div');
+      const cls = i === 0 && p.net > 0 ? 'top' : p.net > 0 ? 'winning' : p.net < 0 ? 'losing' : '';
+      const medal = i === 0 ? ' 🥇' : i === 1 ? ' 🥈' : i === 2 ? ' 🥉' : '';
+      el.className = 'leaderboard-entry ' + cls;
+      el.innerHTML = '<div class="rank ' + (i === 0 ? 'gold' : '') + '">#' + (i+1) + '</div><div class="lb-info"><div class="lb-name">' + p.emoji + ' ' + p.name + medal + '</div><div class="lb-sessions">' + p.sessions + ' session' + (p.sessions !== 1 ? 's' : '') + ' · ' + p.wins + 'W / ' + (p.sessions - p.wins) + 'L</div></div><div class="lb-amount ' + (p.net > 0 ? 'pos' : p.net < 0 ? 'neg' : 'zero') + '">' + (p.net >= 0 ? '+' : '') + '$' + Math.abs(p.net) + '</div>';
+      lb.appendChild(el);
+    });
+  }
+
+  const manage = document.getElementById('player-manage-list');
+  manage.innerHTML = '';
+  state.players.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'player-manage-row';
+    el.innerHTML = '<div class="player-avatar" style="background:var(--surface2);border:1px solid var(--border)">' + p.emoji + '</div><span style="font-size:14px">' + p.name + '</span>' + (p.id !== 'me' ? '<button class="remove-player" onclick="removePlayer(\'' + p.id + '\')">✕</button>' : '<span style="margin-left:auto;font-size:10px;color:var(--muted);letter-spacing:1px">YOU</span>');
+    manage.appendChild(el);
+  });
+}
+
+document.getElementById('new-player-input').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(); });
+
+renderPlayerRow();
+updateAmountDisplay();
+</script>
+</body>
+</html>
