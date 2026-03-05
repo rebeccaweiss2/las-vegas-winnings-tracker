@@ -827,8 +827,8 @@ updateAmountDisplay();
 function generateShareText() {
   const allAmounts = state.sessions.map(s => s.amount);
   const totalNet = allAmounts.reduce((a, b) => a + b, 0);
-  const biggestWin = Math.max(0, ...allAmounts.filter(a => a > 0), 0);
-  const biggestLoss = Math.min(0, ...allAmounts.filter(a => a < 0), 0);
+  const biggestWin = Math.max(0, ...allAmounts.filter(a => a > 0));
+  const biggestLoss = Math.min(0, ...allAmounts.filter(a => a < 0));
 
   let text = '🎰 Vegas Tracker Summary\n';
   text += '━━━━━━━━━━━━━━━━━━━━━\n\n';
@@ -879,13 +879,15 @@ function generateShareText() {
 }
 
 function shareData() {
-  const text = generateShareText();
   if (state.sessions.length === 0) {
     showToast('No sessions to share yet!');
     return;
   }
+  const text = generateShareText();
   if (navigator.share) {
-    navigator.share({ title: 'Vegas Tracker Summary', text: text }).catch(() => {});
+    navigator.share({ title: 'Vegas Tracker Summary', text: text }).catch(err => {
+      if (err.name !== 'AbortError') showToast('Could not share');
+    });
   } else {
     navigator.clipboard.writeText(text).then(() => {
       showToast('Summary copied to clipboard! 📋');
