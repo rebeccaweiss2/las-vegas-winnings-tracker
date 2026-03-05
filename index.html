@@ -504,6 +504,23 @@
   }
 
   .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  .share-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--gold-dim);
+    background: rgba(255,215,0,0.08);
+    color: var(--gold);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+  }
+
+  .share-btn:active { transform: scale(0.98); background: rgba(255,215,0,0.15); }
 </style>
 </head>
 <body>
@@ -580,6 +597,10 @@
 
     <div class="section-title">Leaderboard</div>
     <div id="leaderboard-list"></div>
+
+    <div class="divider"></div>
+
+    <button class="share-btn" onclick="shareData()">📤 SHARE SUMMARY</button>
 
     <div class="divider"></div>
 
@@ -802,6 +823,112 @@ document.getElementById('new-player-input').addEventListener('keydown', e => { i
 
 renderPlayerRow();
 updateAmountDisplay();
+
+function generateShareText() {
+  const allAmounts = state.sessions.map(s => s.amount);
+  const totalNet = allAmounts.reduce((a, b) => a + b, 0);
+  const biggestWin = Math.max(0, ...allAmounts.filter(a => a > 0));
+  const biggestLoss = Math.min(0, ...allAmounts.filter(a => a < 0));
+
+  let text = '🎰 Vegas Tracker Summary\n';
+  text += '━━━━━━━━━━━━━━━━━━━━━\n\n';
+
+  text += '📊 Group Stats\n';
+  text += 'Net: ' + (totalNet >= 0 ? '+' : '') + '$' + Math.abs(Math.round(totalNet)) + '\n';
+  text += 'Sessions: ' + state.sessions.length + '\n';
+  if (biggestWin > 0) text += 'Best Win: $' + biggestWin + '\n';
+  if (biggestLoss < 0) text += 'Worst Loss: $' + Math.abs(biggestLoss) + '\n';
+  text += '\n';
+
+  const leaderboard = state.players.map(p => {
+    const sessions = state.sessions.filter(s => s.playerId === p.id);
+    const net = sessions.reduce((a, s) => a + s.amount, 0);
+    const wins = sessions.filter(s => s.amount > 0).length;
+    return { ...p, net, sessions: sessions.length, wins };
+  }).sort((a, b) => b.net - a.net);
+
+  const hasData = leaderboard.some(p => p.sessions > 0);
+  if (hasData) {
+    text += '🏆 Leaderboard\n';
+    const medals = ['🥇', '🥈', '🥉'];
+    let rank = 0;
+    leaderboard.forEach((p) => {
+      if (p.sessions === 0) return;
+      const medal = medals[rank] || '  ';
+      const net = (p.net >= 0 ? '+' : '-') + '$' + Math.abs(p.net);
+      text += medal + ' ' + p.name + ': ' + net + ' (' + p.wins + 'W/' + (p.sessions - p.wins) + 'L)\n';
+      rank++;
+    });
+    text += '\n';
+  }
+
+  if (state.sessions.length > 0) {
+    text += '📋 Recent Sessions\n';
+    const recent = state.sessions.slice(0, 10);
+    recent.forEach(s => {
+      const player = playerById(s.playerId);
+      const name = player ? player.name : '?';
+      const sign = s.amount >= 0 ? '+' : '-';
+      const casino = s.casino ? ' @ ' + s.casino : '';
+      text += name + ': ' + sign + '$' + Math.abs(s.amount) + casino + '\n';
+    });
+    if (state.sessions.length > 10) {
+      text += '... and ' + (state.sessions.length - 10) + ' more\n';
+    }
+  }
+
+  return text.trim();
+}
+
+function shareData() {
+  if (state.sessions.length === 0) {
+    showToast('No sessions to share yet!');
+    return;
+  }
+  const text = generateShareText();
+  if (navigator.share) {
+    navigator.share({ title: 'Vegas Tracker Summary', text: text }).catch(err => {
+      if (err.name !== 'AbortError') showToast('Could not share');
+    });
+  } else {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Summary copied to clipboard! 📋');
+      }).catch(() => {
+        showToast('Could not share or copy');
+      });
+    } else {
+      // Fallback for non-secure contexts or when navigator.clipboard is unavailable
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        // Avoid scrolling to bottom
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '1px';
+        textArea.style.height = '1px';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand && document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          showToast('Summary copied to clipboard! 📋');
+        } else {
+          showToast('Copy not supported in this browser');
+        }
+      } catch (e) {
+        showToast('Could not share or copy');
+      }
+    }
+  }
+}
 </script>
 </body>
 </html>
